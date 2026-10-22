@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin | HomeFinder Lagos (Demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{--ink:#12201c;--paper:#f4f6f5;--mist:#e1e8e4;--lagoon:#1f5e4f;--danfo:#f5b800;--muted:#5b6b65;--white:#fff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;min-height:100vh}
+  header{background:var(--ink);color:var(--white)}
+  .nav{max-width:1120px;margin:0 auto;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.02em;color:var(--white);text-decoration:none}
+  .logo span{color:var(--danfo)}
+  .nav small{color:#9fb0a9}
+  main{max-width:440px;margin:48px auto;padding:0 20px}
+  .panel{background:var(--white);border:1px solid var(--mist);border-radius:14px;padding:24px}
+  h1{font-size:26px;letter-spacing:-.02em;margin-bottom:6px}
+  .sub{color:var(--muted);margin-bottom:18px}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--mist);padding:4px;border-radius:10px;margin-bottom:18px}
+  .tab{padding:9px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:600;cursor:pointer;color:var(--muted)}
+  .tab[aria-selected="true"]{background:var(--white);color:var(--ink)}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+  input{width:100%;padding:11px 10px;border:1px solid var(--mist);border-radius:8px;font:inherit;background:var(--paper)}
+  input:focus,.tab:focus-visible,.btn:focus-visible{outline:3px solid var(--danfo);outline-offset:2px}
+  .btn{display:block;width:100%;margin-top:18px;padding:12px;border:0;border-radius:8px;background:var(--ink);color:var(--white);font:inherit;font-weight:600;cursor:pointer}
+  .btn.ghost{background:var(--white);color:var(--ink);border:1px solid var(--ink)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .err{color:#9b1c1c;font-size:14px;margin-top:12px;min-height:20px}
+  .note{padding:14px;border-radius:10px;background:#fff6d6;margin:10px 0 0}
+  .ok{background:#e6f4ec}
+  main.wide{max-width:780px}
+  select,textarea{width:100%;padding:11px 10px;border:1px solid var(--mist);border-radius:8px;font:inherit;background:var(--white)}
+  select:focus,textarea:focus{outline:3px solid var(--danfo);outline-offset:2px}
+  .lform{background:var(--paper);border:1px solid var(--mist);border-radius:12px;padding:16px;margin-bottom:16px}
+  .lform h3{font-size:17px;margin-bottom:4px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 14px}
+  .lform .acts{margin-top:16px}
+  .lform .btn{margin:0}
+  .searchrow{display:flex;gap:8px;margin-top:6px}
+  .searchrow input{flex:1}
+  .searchrow .sm{white-space:nowrap}
+  .findres{margin-top:6px}
+  .findres p{font-size:14px;color:var(--muted);margin:4px 0}
+  .findres button{display:block;width:100%;text-align:left;padding:9px 10px;margin-top:6px;border:1px solid var(--mist);border-radius:8px;background:var(--white);font:inherit;font-size:14px;cursor:pointer}
+  .findres button:hover{border-color:var(--lagoon)}
+  .findres button:focus-visible{outline:3px solid var(--danfo);outline-offset:2px}
+  #pickmap{height:280px;border-radius:10px;border:1px solid var(--mist);margin-top:6px;z-index:0;background:#cfe0e8}
+  .pthumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  .pt{position:relative;width:96px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--mist);background:var(--white)}
+  .pt img{width:100%;height:100%;object-fit:cover;display:block}
+  .pt button{position:absolute;top:4px;right:4px;width:24px;height:24px;border:0;border-radius:999px;background:rgba(18,32,28,.85);color:#fff;cursor:pointer;font-size:15px;line-height:1}
+  .pt button:focus-visible{outline:3px solid var(--danfo)}
+  .pt .cv{position:absolute;left:4px;bottom:4px;background:var(--danfo);color:var(--ink);font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px}
+  a.sm{text-decoration:none;color:var(--ink);display:inline-block}
+  .dash-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .dash-head .btn{width:auto;margin:0;padding:9px 16px}
+  h2{font-size:19px;letter-spacing:-.02em;margin:26px 0 4px}
+  .agent{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--mist)}
+  .agent:first-of-type{border-top:0}
+  .who strong{display:block}
+  .who span{color:var(--muted);font-size:14px}
+  .badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;margin-left:8px;background:var(--mist)}
+  .badge.pending{background:var(--danfo)}
+  .badge.approved{background:#cfe9da}
+  .acts{display:flex;gap:8px}
+  .sm{padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--white);font:inherit;font-weight:600;cursor:pointer}
+  .sm.go{background:var(--ink);color:var(--white)}
+  .sm:disabled{opacity:.5;cursor:wait}
+  .sm:focus-visible{outline:3px solid var(--danfo);outline-offset:2px}
+  .empty{color:var(--muted);padding:10px 0}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="nav"><a class="logo" href="index.html">Home<span>Finder</span> Lagos</a><small>Admin</small></div></header>
+
+<main>
+  <div class="panel" id="loading"><p>Checking your login...</p></div>
+
+  <!-- Logged out -->
+  <div class="panel" id="auth" hidden>
+    <h1>Agent portal</h1>
+    <p class="sub">Log in to manage listings.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-login" aria-selected="true">Log in</button>
+      <button class="tab" role="tab" id="t-signup" aria-selected="false">Create account</button>
+    </div>
+
+    <form id="login">
+      <label for="le">Email</label><input id="le" type="email" autocomplete="email" required>
+      <label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" required>
+      <button class="btn" type="submit">Log in</button>
+    </form>
+
+    <form id="signup" hidden>
+      <label for="sn">Full name</label><input id="sn" autocomplete="name" required>
+      <label for="se">Email</label><input id="se" type="email" autocomplete="email" required>
+      <label for="sp">Password (at least 6 characters)</label><input id="sp" type="password" autocomplete="new-password" minlength="6" required>
+      <button class="btn" type="submit">Create agent account</button>
+      <p class="sub" style="margin:12px 0 0;font-size:14px">New accounts need approval from the owner before you can add listings.</p>
+    </form>
+    <div class="err" id="err" role="alert"></div>
+  </div>
+
+  <!-- Owner dashboard -->
+  <div class="panel" id="dash" hidden>
+    <div class="dash-head">
+      <div><h1 id="d-title">Dashboard</h1><p class="sub" id="d-email"></p></div>
+      <button class="btn ghost" id="out2" type="button">Log out</button>
+    </div>
+
+    <div id="agents-sec">
+      <h2>Agents</h2>
+      <p class="sub" style="margin-bottom:8px">Approve people who sign up. Only approved agents can add listings.</p>
+      <div id="agents" aria-live="polite"></div>
+    </div>
+
+    <h2>Listings</h2>
+    <p class="sub" id="l-sub" style="margin-bottom:10px"></p>
+    <button class="btn" id="addBtn" type="button" style="width:auto;margin:0 0 14px;padding:10px 18px">Add listing</button>
+
+    <form class="lform" id="lform" hidden novalidate>
+      <h3 id="lf-title">Add listing</h3>
+      <div class="grid2">
+        <div><label for="l-title">Title</label><input id="l-title" placeholder="e.g. Modern 2-bedroom flat" maxlength="80"></div>
+        <div><label for="l-type">For</label>
+          <select id="l-type"><option value="rent">Rent</option><option value="buy">Sale</option></select></div>
+        <div><label for="l-area">Area</label>
+          <input id="l-area" list="areas" placeholder="e.g. Lekki" maxlength="40">
+          <datalist id="areas"><option>Yaba</option><option>Lekki</option><option>Ikeja</option><option>Surulere</option><option>Victoria Island</option><option>Ikoyi</option><option>Ajah</option><option>Maryland</option></datalist></div>
+        <div><label for="l-price">Price (₦)</label><input id="l-price" type="number" min="1" inputmode="numeric" placeholder="e.g. 1800000"></div>
+        <div><label for="l-per">Rent period (rentals only)</label>
+          <select id="l-per"><option value="/year">per year</option><option value="/month">per month</option><option value="/night">per night</option></select></div>
+        <div><label for="l-beds">Bedrooms</label><input id="l-beds" type="number" min="0" inputmode="numeric"></div>
+        <div><label for="l-baths">Bathrooms</label><input id="l-baths" type="number" min="0" inputmode="numeric"></div>
+        <div><label for="l-sqm">Size (m²)</label><input id="l-sqm" type="number" min="1" inputmode="numeric"></div>
+      </div>
+      <label for="l-desc">Description</label>
+      <textarea id="l-desc" rows="3" maxlength="600" placeholder="A short description of the property"></textarea>
+      <label for="l-feat">Features (separate with commas)</label>
+      <input id="l-feat" placeholder="24/7 security, Parking space, Borehole">
+      <label>Exact location (click the map to drop the pin, drag it to adjust)</label>
+      <div class="searchrow">
+        <input id="l-find" placeholder="Search a street or place, e.g. Admiralty Way, Lekki" maxlength="100" aria-label="Search for a street or place">
+        <button class="sm go" type="button" id="findbtn">Find</button>
+      </div>
+      <div class="findres" id="findres" aria-live="polite"></div>
+      <div id="pickmap" role="application" aria-label="Map: click to place the property pin"></div>
+      <p class="sub" id="pinstatus" style="font-size:14px;margin:6px 0 0" aria-live="polite"></p>
+      <button class="sm" type="button" id="clearpin" style="margin-top:6px">Clear pin</button>
+
+      <label for="l-files">Photos (up to 6, the first one is the cover)</label>
+      <input id="l-files" type="file" accept="image/*" multiple>
+      <div class="pthumbs" id="pthumbs"></div>
+      <p class="sub" id="pstatus" style="font-size:14px;margin:6px 0 0" aria-live="polite"></p>
+      <div class="err" id="lerr" role="alert"></div>
+      <div class="acts">
+        <button class="btn" type="submit" id="lsave" style="width:auto;padding:10px 20px">Save listing</button>
+        <button class="sm" type="button" id="lcancel">Cancel</button>
+      </div>
+    </form>
+
+    <div id="llist" aria-live="polite"></div>
+  </div>
+
+  <!-- Logged in -->
+  <div class="panel" id="status" hidden>
+    <h1 id="s-title"></h1>
+    <p class="sub" id="s-email"></p>
+    <div class="note" id="s-note"></div>
+    <button class="btn ghost" id="out">Log out</button>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+  import { auth, db } from "./firebase.js";
+  import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { doc, getDoc, setDoc, collection, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const $ = id => document.getElementById(id);
+  const show = id => {
+    ["loading", "auth", "status", "dash"].forEach(x => $(x).hidden = x !== id);
+    document.querySelector("main").classList.toggle("wide", id === "dash");
+  };
+  let busy = false; // true while an account is being created, so we don't read the profile too early
+
+  const messages = {
+    "auth/invalid-credential": "Wrong email or password.",
+    "auth/invalid-email": "That email address doesn't look right.",
+    "auth/email-already-in-use": "An account with this email already exists. Log in instead.",
+    "auth/weak-password": "Use a password with at least 6 characters.",
+    "auth/too-many-requests": "Too many attempts. Wait a few minutes and try again.",
+    "auth/network-request-failed": "No connection. Check your internet and try again."
+  };
+  const say = e => $("err").textContent = messages[e.code] || "Something went wrong. Please try again.";
+
+  // Tabs
+  function tab(which){
+    const login = which === "login";
+    $("login").hidden = !login; $("signup").hidden = login;
+    $("t-login").setAttribute("aria-selected", login); $("t-signup").setAttribute("aria-selected", !login);
+    $("err").textContent = "";
+  }
+  $("t-login").onclick = () => tab("login");
+  $("t-signup").onclick = () => tab("signup");
+
+  // Log in
+  $("login").addEventListener("submit", async e => {
+    e.preventDefault(); $("err").textContent = "";
+    const b = e.target.querySelector("button"); b.disabled = true;
+    try { await signInWithEmailAndPassword(auth, $("le").value.trim(), $("lp").value); }
+    catch (err) { say(err); }
+    b.disabled = false;
+  });
+
+  // Sign up: always creates a PENDING agent. Only the owner can approve (enforced by the database rules).
+  $("signup").addEventListener("submit", async e => {
+    e.preventDefault(); $("err").textContent = "";
+    const b = e.target.querySelector("button"); b.disabled = true; busy = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, $("se").value.trim(), $("sp").value);
+      await setDoc(doc(db, "users", cred.user.uid), {
+        role: "agent", status: "pending", email: cred.user.email, name: $("sn").value.trim()
+      });
+      busy = false;
+      await showFor(cred.user);
+    } catch (err) { busy = false; say(err); }
+    b.disabled = false;
+  });
+
+  $("out").onclick = () => signOut(auth);
+  $("out2").onclick = () => signOut(auth);
+
+  // ---- Owner: manage agents ----
+  function agentRow(a){
+    const row = document.createElement("div"); row.className = "agent";
+
+    const who = document.createElement("div"); who.className = "who";
+    const name = document.createElement("strong"); name.textContent = a.name || "(no name)";
+    const badge = document.createElement("span"); badge.className = "badge " + a.status; badge.textContent = a.status;
+    name.appendChild(badge);
+    const mail = document.createElement("span"); mail.textContent = a.email;
+    who.append(name, mail);
+
+    const acts = document.createElement("div"); acts.className = "acts";
+    const btn = (label, status, primary) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "sm" + (primary ? " go" : ""); b.textContent = label;
+      b.addEventListener("click", async () => {
+        b.disabled = true;
+        try { await updateDoc(doc(db, "users", a.uid), { status }); await loadAgents(); }
+        catch (err) { console.error(err); b.disabled = false; alert("Couldn't update. Check your connection and try again."); }
+      });
+      return b;
+    };
+    if (a.status === "pending") acts.append(btn("Approve", "approved", true), btn("Reject", "rejected"));
+    else if (a.status === "approved") acts.append(btn("Remove access", "removed"));
+    else acts.append(btn("Approve again", "approved", true));
+
+    row.append(who, acts);
+    return row;
+  }
+
+  async function loadAgents(){
+    const box = $("agents");
+    box.textContent = "Loading...";
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      const agents = snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(u => u.role === "agent");
+      const order = { pending: 0, approved: 1 };
+      agents.sort((x, y) => (order[x.status] ?? 2) - (order[y.status] ?? 2));
+      box.textContent = "";
+      if (!agents.length) {
+        const p = document.createElement("p"); p.className = "empty"; p.textContent = "No agents yet. When someone signs up, they will appear here.";
+        box.appendChild(p);
+      } else agents.forEach(a => box.appendChild(agentRow(a)));
+    } catch (err) {
+      console.error(err);
+      box.textContent = "Couldn't load agents. Refresh the page.";
+    }
+  }
+
+  // ---- Dashboard for owner and approved agents ----
+  let me = null;           // who is logged in: { uid, role }
+  let editingId = null;    // id of the listing being edited, or null when adding
+  const CLOUD = "ckkhoevj", PRESET = "homefinder_unsigned";   // Cloudinary (safe to keep in front-end code)
+  let formPhotos = [];     // photo URLs for the listing being edited
+  let uploading = false;
+  const COLORS = ["#1f5e4f", "#2d6a8f", "#7a5c3e", "#4b4f8c", "#8c4b5e", "#3e7a6b"];
+  const naira = n => "₦" + Number(n).toLocaleString("en-NG");
+
+  async function openDash(user, profile){
+    me = { uid: user.uid, role: profile.role };
+    const owner = profile.role === "owner";
+    $("d-title").textContent = owner ? "Owner dashboard" : "Agent dashboard";
+    $("d-email").textContent = user.email;
+    $("agents-sec").hidden = !owner;
+    $("l-sub").textContent = owner
+      ? "All listings on the site. You can edit or delete any of them."
+      : "The listings you've added. Only the owner can change the others.";
+    closeForm();
+    show("dash");
+    if (owner) await loadAgents();
+    await loadListings();
+  }
+
+  function openForm(l){
+    editingId = l ? l.id : null;
+    $("lf-title").textContent = l ? "Edit listing" : "Add listing";
+    $("l-title").value = l ? l.title : "";
+    $("l-type").value = l ? l.type : "rent";
+    $("l-area").value = l ? l.area : "";
+    $("l-price").value = l ? l.price : "";
+    $("l-per").value = l && l.per ? l.per : "/year";
+    $("l-beds").value = l ? l.beds : "";
+    $("l-baths").value = l ? l.baths : "";
+    $("l-sqm").value = l ? l.sqm : "";
+    $("l-desc").value = l ? (l.desc || "") : "";
+    $("l-feat").value = l ? (l.features || []).join(", ") : "";
+    formPhotos = l && Array.isArray(l.photos) ? [...l.photos] : [];
+    drawThumbs();
+    $("pstatus").textContent = "";
+    $("lerr").textContent = "";
+    $("lform").hidden = false;
+    initPick(l);
+    $("l-title").focus();
+  }
+  const thumbUrl = u => u.replace("/upload/", "/upload/f_auto,q_auto,w_200/");
+  function drawThumbs(){
+    const box = $("pthumbs"); box.textContent = "";
+    formPhotos.forEach((u, i) => {
+      const d = document.createElement("div"); d.className = "pt";
+      const img = document.createElement("img"); img.src = thumbUrl(u); img.alt = "Photo " + (i + 1);
+      const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove photo " + (i + 1));
+      x.onclick = () => { formPhotos.splice(i, 1); drawThumbs(); };
+      d.append(img, x);
+      if (i === 0) { const c = document.createElement("span"); c.className = "cv"; c.textContent = "Cover"; d.appendChild(c); }
+      box.appendChild(d);
+    });
+  }
+
+  $("l-files").addEventListener("change", async e => {
+    const files = [...e.target.files]; e.target.value = "";
+    if (!files.length) return;
+    const room = 6 - formPhotos.length;
+    const status = m => $("pstatus").textContent = m;
+    if (room <= 0) return status("You can add up to 6 photos. Remove one to add another.");
+
+    const pick = files.slice(0, room);
+    uploading = true; $("lsave").disabled = true;
+    let done = 0, failed = 0;
+    for (const f of pick) {
+      status(`Uploading photo ${done + failed + 1} of ${pick.length}...`);
+      if (!f.type.startsWith("image/") || f.size > 8 * 1024 * 1024) { failed++; continue; }
+      try {
+        const fd = new FormData(); fd.append("file", f); fd.append("upload_preset", PRESET);
+        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: "POST", body: fd });
+        const j = await r.json();
+        if (!r.ok || !j.secure_url) throw new Error(j.error ? j.error.message : "Upload failed");
+        formPhotos.push(j.secure_url); drawThumbs(); done++;
+      } catch (err) { console.error(err); failed++; }
+    }
+    status(failed
+      ? `${done} added, ${failed} failed. Photos must be images under 8 MB.`
+      : `${done} photo${done === 1 ? "" : "s"} added. Click Save listing to keep ${done === 1 ? "it" : "them"}.`);
+    uploading = false; $("lsave").disabled = false;
+  });
+
+  // ---- Pick the exact location on a map ----
+  const AREA_COORDS = {
+    Yaba: [6.5095, 3.3711], Lekki: [6.4474, 3.4723], Surulere: [6.5010, 3.3569], Ikeja: [6.6018, 3.3515],
+    "Victoria Island": [6.4281, 3.4219], Ikoyi: [6.4549, 3.4346], Ajah: [6.4698, 3.5852], Maryland: [6.5667, 3.3633]
+  };
+  let pickMap = null, pickMarker = null, pin = null;   // pin = [lat, lng] or null
+
+  function setPin(ll){
+    pin = [Number(ll.lat.toFixed(6)), Number(ll.lng.toFixed(6))];
+    if (!pickMarker) {
+      pickMarker = L.marker(ll, { draggable: true }).addTo(pickMap);
+      pickMarker.on("dragend", () => setPin(pickMarker.getLatLng()));
+    } else pickMarker.setLatLng(ll);
+    $("pinstatus").textContent = "Pin placed. Visitors will see this exact spot.";
+  }
+  function clearPin(){
+    pin = null;
+    if (pickMarker) { pickMap.removeLayer(pickMarker); pickMarker = null; }
+    $("pinstatus").textContent = "No pin yet. Until you place one, the site shows an approximate spot in the area.";
+  }
+  function centreFor(area){ return AREA_COORDS[area] || [6.5244, 3.3792]; }
+
+  // Search a street or place (OpenStreetMap's free search, limited to Nigeria)
+  async function findPlace(){
+    const q = $("l-find").value.trim(), box = $("findres");
+    const say = m => { box.textContent = ""; const p = document.createElement("p"); p.textContent = m; box.appendChild(p); };
+    if (q.length < 3) return say("Type at least 3 letters.");
+    say("Searching...");
+    try {
+      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=ng&accept-language=en&q=" + encodeURIComponent(q));
+      const list = await r.json();
+      if (!list.length) return say("Nothing found. Try the area name, then click the map to place the pin.");
+      say("Pick the right one, then check the pin and drag it if needed:");
+      list.forEach(it => {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = it.display_name;
+        b.onclick = () => {
+          const ll = { lat: Number(it.lat), lng: Number(it.lon) };
+          setPin(ll); pickMap.setView([ll.lat, ll.lng], 17); box.textContent = "";
+        };
+        box.appendChild(b);
+      });
+    } catch (err) {
+      console.error(err);
+      say("Search isn't available right now. Click the map to place the pin instead.");
+    }
+  }
+  $("findbtn").onclick = findPlace;
+  $("l-find").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); findPlace(); } });
+
+  function initPick(l){
+    if (!pickMap) {
+      pickMap = L.map("pickmap", { scrollWheelZoom: false }).setView([6.5244, 3.3792], 11);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(pickMap);
+      pickMap.on("click", e => setPin(e.latlng));
+    }
+    pickMap.invalidateSize();               // the form was hidden, so re-measure the map
+    $("l-find").value = ""; $("findres").textContent = "";
+    clearPin();
+    if (l && l.lat && l.lng) { setPin({ lat: l.lat, lng: l.lng }); pickMap.setView([l.lat, l.lng], 16); }
+    else pickMap.setView(centreFor(l ? l.area : ""), l ? 14 : 11);
+  }
+  $("clearpin").onclick = clearPin;
+  $("l-area").addEventListener("change", () => {
+    if (pickMap && !pin) pickMap.setView(centreFor($("l-area").value.trim()), 14);
+  });
+
+  function closeForm(){ $("lform").hidden = true; editingId = null; }
+
+  $("addBtn").onclick = () => openForm(null);
+  $("lcancel").onclick = closeForm;
+
+  $("lform").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (uploading) return;
+    const title = $("l-title").value.trim(), area = $("l-area").value.trim();
+    const type = $("l-type").value;
+    const price = Number($("l-price").value), beds = Number($("l-beds").value);
+    const baths = Number($("l-baths").value), sqm = Number($("l-sqm").value);
+    const fail = m => { $("lerr").textContent = m; };
+
+    if (title.length < 3) return fail("Enter a title, for example: Modern 2-bedroom flat.");
+    if (!area) return fail("Enter the area, for example: Lekki.");
+    if (!(price > 0)) return fail("Enter the price in naira.");
+    if ($("l-beds").value === "" || beds < 0) return fail("Enter the number of bedrooms (0 for a studio).");
+    if ($("l-baths").value === "" || baths < 0) return fail("Enter the number of bathrooms.");
+    if (!(sqm > 0)) return fail("Enter the size in square metres.");
+    fail("");
+
+    const data = {
+      title, area, type, price: Math.round(price),
+      per: type === "buy" ? "" : $("l-per").value,
+      beds: Math.round(beds), baths: Math.round(baths), sqm: Math.round(sqm),
+      desc: $("l-desc").value.trim(),
+      photos: formPhotos,
+      lat: pin ? pin[0] : null,
+      lng: pin ? pin[1] : null,
+      features: $("l-feat").value.split(",").map(x => x.trim()).filter(Boolean)
+    };
+
+    const b = $("lsave"); b.disabled = true;
+    try {
+      if (editingId !== null) {
+        await updateDoc(doc(db, "listings", String(editingId)), data);
+      } else {
+        const id = Date.now();
+        await setDoc(doc(db, "listings", String(id)), {
+          ...data, id, color: COLORS[id % COLORS.length], createdBy: me.uid
+        });
+      }
+      closeForm();
+      await loadListings();
+    } catch (err) {
+      console.error(err);
+      fail("Couldn't save. Check your connection and that your account is approved, then try again.");
+    }
+    b.disabled = false;
+  });
+
+  function listingRow(l){
+    const row = document.createElement("div"); row.className = "agent";
+
+    const who = document.createElement("div"); who.className = "who";
+    const t = document.createElement("strong"); t.textContent = l.title;
+    const m = document.createElement("span");
+    m.textContent = `${l.area} · ${l.type === "rent" ? "For rent" : "For sale"} · ${naira(l.price)}${l.per || ""} · ${l.beds} bed`;
+    who.append(t, m);
+
+    const acts = document.createElement("div"); acts.className = "acts";
+    const view = document.createElement("a"); view.className = "sm"; view.textContent = "View";
+    view.href = "property.html?id=" + l.id; view.target = "_blank"; view.rel = "noopener";
+
+    const edit = document.createElement("button"); edit.type = "button"; edit.className = "sm"; edit.textContent = "Edit";
+    edit.onclick = () => { openForm(l); $("lform").scrollIntoView({ behavior: "smooth", block: "center" }); };
+
+    const del = document.createElement("button"); del.type = "button"; del.className = "sm"; del.textContent = "Delete";
+    del.onclick = async () => {
+      if (!confirm(`Delete "${l.title}"? This can't be undone.`)) return;
+      del.disabled = true;
+      try { await deleteDoc(doc(db, "listings", String(l.id))); await loadListings(); }
+      catch (err) { console.error(err); del.disabled = false; alert("Couldn't delete this listing."); }
+    };
+
+    acts.append(view, edit, del);
+    row.append(who, acts);
+    return row;
+  }
+
+  async function loadListings(){
+    const box = $("llist");
+    box.textContent = "Loading...";
+    try {
+      const ref = collection(db, "listings");
+      const snap = await getDocs(me.role === "owner" ? ref : query(ref, where("createdBy", "==", me.uid)));
+      const items = snap.docs.map(d => d.data()).sort((a, b) => b.id - a.id);
+      box.textContent = "";
+      if (!items.length) {
+        const p = document.createElement("p"); p.className = "empty";
+        p.textContent = "No listings yet. Click Add listing to create your first one.";
+        box.appendChild(p);
+      } else items.forEach(l => box.appendChild(listingRow(l)));
+    } catch (err) {
+      console.error(err);
+      box.textContent = "Couldn't load listings. Refresh the page.";
+    }
+  }
+
+  // Decide what to show for the signed-in person
+  async function showFor(user){
+    show("loading");
+    let profile = null;
+    try { const s = await getDoc(doc(db, "users", user.uid)); profile = s.exists() ? s.data() : null; }
+    catch (err) { console.error(err); }
+
+    $("s-email").textContent = user.email;
+    const note = $("s-note"); note.className = "note";
+
+    if (!profile) {
+      $("s-title").textContent = "No profile found";
+      note.textContent = "This login has no agent profile yet. Ask the owner to set you up.";
+    } else if (profile.status === "approved") {
+      await openDash(user, profile);
+      return;
+    } else if (profile.status === "pending") {
+      $("s-title").textContent = "Waiting for approval";
+      note.textContent = "Your account was created. The owner needs to approve it before you can add listings. Check back later.";
+    } else if (profile.status === "approved") {
+      $("s-title").textContent = profile.role === "owner" ? "Welcome, owner" : "Welcome, agent";
+      note.className = "note ok";
+      note.textContent = "You're logged in. The listings manager is the next step we'll build.";
+    } else {
+      $("s-title").textContent = "Account not active";
+      note.textContent = "This account can't use the admin right now. Contact the owner.";
+    }
+    show("status");
+  }
+
+  onAuthStateChanged(auth, user => {
+    if (busy) return;
+    if (user) showFor(user); else show("auth");
+  });
+</script>
+</body>
+</html>

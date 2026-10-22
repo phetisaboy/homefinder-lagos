@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HomeFinder Lagos (Demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --ink:#12201c; --paper:#f4f6f5; --mist:#e1e8e4; --lagoon:#1f5e4f;
+    --danfo:#f5b800; --muted:#5b6b65; --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  header{background:var(--ink);color:var(--white)}
+  .nav{display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .logo span{color:var(--danfo)}
+  .nav a.link{font-size:15px;opacity:.85}
+
+  .hero{background:var(--ink);color:var(--white);padding:36px 0 72px}
+  .hero h1{font-size:clamp(34px,6vw,64px);font-weight:800;line-height:1.02;letter-spacing:-.03em;max-width:14ch}
+  .hero p{margin-top:16px;max-width:46ch;color:#c4d2cc}
+
+  .search{margin-top:-40px;background:var(--white);border-radius:14px;padding:18px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;box-shadow:0 10px 30px rgba(18,32,28,.12)}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  .field select{width:100%;padding:11px 10px;border:1px solid var(--mist);border-radius:8px;font:inherit;background:var(--paper)}
+  .field select:focus{outline:3px solid var(--danfo);outline-offset:1px}
+  .reset{align-self:end;padding:11px 14px;border:0;border-radius:8px;background:var(--ink);color:var(--white);font:inherit;font-weight:600;cursor:pointer}
+  .reset:focus-visible{outline:3px solid var(--danfo);outline-offset:2px}
+
+  #homemap{height:min(55vh,440px);min-height:300px;border-radius:14px;border:1px solid var(--mist);margin-top:28px;z-index:0;background:#cfe0e8}
+  .pop strong{display:block;font-size:15px}
+  .pop a{display:inline-block;margin-top:6px;font-weight:600;color:var(--lagoon);text-decoration:underline}
+  .results-head{display:flex;justify-content:space-between;align-items:baseline;margin:36px 0 16px}
+  .results-head h2{font-size:26px;letter-spacing:-.02em}
+  #count{color:var(--muted);font-size:15px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:22px;padding-bottom:56px}
+  .card{display:block;background:var(--white);border-radius:14px;overflow:hidden;border:1px solid var(--mist)}
+  .card:hover{border-color:var(--lagoon)}
+  .photo{height:190px;position:relative}
+  .photo svg,.photo img{width:100%;height:100%;display:block}
+  .photo img{object-fit:cover}
+  .tag{position:absolute;top:12px;left:12px;background:var(--danfo);color:var(--ink);font-weight:600;font-size:13px;padding:4px 10px;border-radius:999px}
+  .body{padding:16px}
+  .price{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .price small{font-weight:400;color:var(--muted);font-size:14px}
+  .title{margin-top:4px;font-weight:600}
+  .loc{color:var(--muted);font-size:14px}
+  .facts{display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--mist);font-size:14px;color:var(--muted)}
+  .empty{grid-column:1/-1;text-align:center;padding:48px 0;color:var(--muted)}
+
+  footer{background:var(--ink);color:#9fb0a9;padding:24px 0;font-size:14px}
+  @media (prefers-reduced-motion:no-preference){.card{transition:border-color .15s}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#">Home<span>Finder</span> Lagos</a>
+    <a class="link" href="#listings">Browse listings</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>Find your next place in Lagos.</h1>
+    <p>Browse flats, houses and shortlets across Lekki, Yaba, Ikeja and more.</p>
+  </div>
+</section>
+
+<main class="wrap" id="listings">
+  <form class="search" onsubmit="return false">
+    <div class="field"><label for="f-type">For</label>
+      <select id="f-type"><option value="">Rent or buy</option><option value="rent">Rent</option><option value="buy">Buy</option></select></div>
+    <div class="field"><label for="f-area">Area</label>
+      <select id="f-area"><option value="">All areas</option></select></div>
+    <div class="field"><label for="f-beds">Bedrooms</label>
+      <select id="f-beds"><option value="">Any</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></div>
+    <div class="field"><label for="f-price">Max price</label>
+      <select id="f-price"><option value="">No limit</option><option value="2000000">₦2m</option><option value="5000000">₦5m</option><option value="50000000">₦50m</option><option value="150000000">₦150m</option></select></div>
+    <button class="reset" type="button" id="reset">Clear filters</button>
+  </form>
+
+  <div id="homemap" role="region" aria-label="Map of available properties"></div>
+
+  <div class="results-head">
+    <h2>Available now</h2>
+    <span id="count" aria-live="polite"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  <div class="wrap">Demo project for portfolio purposes. All listings, names and prices are fictional.</div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+  import { db } from "./firebase.js";
+  import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // Load listings from Firestore
+  let listings = [];
+  let loadFailed = false;
+  try {
+    const snap = await getDocs(collection(db, "listings"));
+    listings = snap.docs.map(d => d.data()).sort((a, b) => a.id - b.id);
+  } catch (err) {
+    console.error(err);
+    loadFailed = true;
+  }
+
+  const $ = id => document.getElementById(id);
+  // Cloudinary: serve a smaller, optimised version of an uploaded photo
+  const cl = (u, w) => u.replace("/upload/", `/upload/f_auto,q_auto,w_${w}/`);
+  const naira = n => "₦" + n.toLocaleString("en-NG");
+
+  // Simple house drawing used until real photos are added
+  const houseSVG = c => `<svg viewBox="0 0 320 190" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="320" height="190" fill="${c}"/>
+    <rect y="140" width="320" height="50" fill="rgba(0,0,0,.18)"/>
+    <polygon points="100,95 160,50 220,95" fill="rgba(255,255,255,.85)"/>
+    <rect x="112" y="95" width="96" height="55" fill="rgba(255,255,255,.7)"/>
+    <rect x="148" y="112" width="24" height="38" fill="${c}"/>
+  </svg>`;
+
+  // Fill the area dropdown from the data
+  [...new Set(listings.map(l => l.area))].sort()
+    .forEach(a => $("f-area").insertAdjacentHTML("beforeend", `<option>${a}</option>`));
+
+  // Map of all (filtered) listings
+  const AREA_COORDS = {
+    Yaba: [6.5095, 3.3711], Lekki: [6.4474, 3.4723],
+    Surulere: [6.5010, 3.3569], Ikeja: [6.6018, 3.3515]
+  };
+  const posOf = l => {
+    if (l.lat && l.lng) return [l.lat, l.lng];
+    const b = AREA_COORDS[l.area] || [6.5244, 3.3792];
+    return [b[0] + ((l.id * 37) % 10 - 5) * 0.002, b[1] + ((l.id * 53) % 10 - 5) * 0.002];
+  };
+
+  const map = L.map("homemap", { scrollWheelZoom: false, minZoom: 1 }).setView([6.55, 3.4], 11);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+  const pins = L.layerGroup().addTo(map);
+
+  function updateMap(shown){
+    pins.clearLayers();
+    const pts = shown.map(posOf);
+    shown.forEach((l, i) => {
+      L.marker(pts[i]).addTo(pins).bindPopup(
+        `<div class="pop"><strong>${l.title}</strong>${naira(l.price)}${l.per} &middot; ${l.area}<br>
+         <a href="property.html?id=${l.id}">View property</a></div>`);
+    });
+    if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.3), { maxZoom: 14 });
+  }
+
+  function render(){
+    const type = $("f-type").value, area = $("f-area").value;
+    const beds = +$("f-beds").value || 0, max = +$("f-price").value || Infinity;
+
+    const shown = listings.filter(l =>
+      (!type || l.type === type) && (!area || l.area === area) &&
+      l.beds >= beds && l.price <= max);
+
+    updateMap(shown);
+    $("count").textContent = shown.length + (shown.length === 1 ? " property" : " properties");
+
+    $("grid").innerHTML = shown.length ? shown.map(l => `
+      <a class="card" href="property.html?id=${l.id}">
+        <div class="photo">${l.photos && l.photos[0] ? `<img src="${cl(l.photos[0], 600)}" alt="${String(l.title).replace(/"/g, "&quot;")}" loading="lazy">` : houseSVG(l.color)}<span class="tag">${l.type === "rent" ? "For rent" : "For sale"}</span></div>
+        <div class="body">
+          <div class="price">${naira(l.price)}<small>${l.per}</small></div>
+          <div class="title">${l.title}</div>
+          <div class="loc">${l.area}, Lagos</div>
+          <div class="facts"><span>${l.beds} bed</span><span>${l.baths} bath</span><span>${l.sqm} m²</span></div>
+        </div>
+      </a>`).join("")
+      : `<p class="empty">${loadFailed ? "We couldn't load the listings. Check your connection and refresh the page." : "No properties match those filters. Try a wider price or area."}</p>`;
+  }
+
+  ["f-type","f-area","f-beds","f-price"].forEach(id => $(id).addEventListener("change", render));
+  $("reset").addEventListener("click", () => {
+    ["f-type","f-area","f-beds","f-price"].forEach(id => $(id).value = "");
+    render();
+  });
+  render();
+</script>
+</body>
+</html>
