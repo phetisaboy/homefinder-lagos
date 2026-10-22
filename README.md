@@ -7,9 +7,11 @@ A property listing website for Lagos with an admin dashboard, maps, photo galler
 > Demo project. All listings, names and prices are fictional.
 
 ## Screenshots
+<img width="1110" height="678" alt="image" src="https://github.com/user-attachments/assets/5523231f-b8de-430d-8c45-bdad01bd0e7b" />
 <img width="1110" height="691" alt="image" src="https://github.com/user-attachments/assets/c32f9949-a340-4c87-b762-3e46fa192a95" />
 <img width="370" height="521" alt="image" src="https://github.com/user-attachments/assets/6e55ec1f-4639-431f-b2c0-c5ec2b7163ac" />
-<img width="370" height="521" alt="image" src="https://github.com/user-attachments/assets/a42b2729-14d9-40aa-93cf-eca7cc193f01" />
+
+
 
 
 
