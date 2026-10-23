@@ -67,7 +67,10 @@
   .who span{color:var(--muted);font-size:14px}
   .badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;margin-left:8px;background:var(--mist)}
   .badge.pending{background:var(--danfo)}
-  .badge.approved{background:#cfe9da}
+  .badge.approved,.badge.contacted{background:#cfe9da}
+  .badge.new{background:var(--danfo)}
+  .msg{margin-top:6px;white-space:pre-wrap;color:#2c3d37;font-size:15px;max-width:52ch}
+  .who a.ref{color:var(--lagoon);text-decoration:underline}
   .acts{display:flex;gap:8px}
   .sm{padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--white);font:inherit;font-weight:600;cursor:pointer}
   .sm.go{background:var(--ink);color:var(--white)}
@@ -119,6 +122,12 @@
       <h2>Agents</h2>
       <p class="sub" style="margin-bottom:8px">Approve people who sign up. Only approved agents can add listings.</p>
       <div id="agents" aria-live="polite"></div>
+    </div>
+
+    <div id="inq-sec">
+      <h2 id="inq-h">Inquiries</h2>
+      <p class="sub" style="margin-bottom:8px">Messages from visitors who used the contact form on a property page.</p>
+      <div id="inqs" aria-live="polite"></div>
     </div>
 
     <h2>Listings</h2>
@@ -183,7 +192,7 @@
   import { auth, db } from "./firebase.js";
   import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { doc, getDoc, setDoc, collection, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { doc, getDoc, setDoc, collection, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const $ = id => document.getElementById(id);
   const show = id => {
@@ -303,12 +312,13 @@
     $("d-title").textContent = owner ? "Owner dashboard" : "Agent dashboard";
     $("d-email").textContent = user.email;
     $("agents-sec").hidden = !owner;
+    $("inq-sec").hidden = !owner;
     $("l-sub").textContent = owner
       ? "All listings on the site. You can edit or delete any of them."
       : "The listings you've added. Only the owner can change the others.";
     closeForm();
     show("dash");
-    if (owner) await loadAgents();
+    if (owner) { await loadAgents(); await loadInquiries(); }
     await loadListings();
   }
 
@@ -539,6 +549,75 @@
     } catch (err) {
       console.error(err);
       box.textContent = "Couldn't load listings. Refresh the page.";
+    }
+  }
+
+  // ---- Owner: inquiries inbox ----
+  const waNumber = phone => {
+    const d = String(phone).replace(/\D/g, "");
+    return d.startsWith("234") ? d : d.startsWith("0") ? "234" + d.slice(1) : d;
+  };
+
+  function inquiryRow(q){
+    const row = document.createElement("div"); row.className = "agent";
+
+    const who = document.createElement("div"); who.className = "who";
+    const name = document.createElement("strong"); name.textContent = q.name;
+    const badge = document.createElement("span"); badge.className = "badge " + q.status; badge.textContent = q.status;
+    name.appendChild(badge);
+
+    const meta = document.createElement("span");
+    meta.append(q.phone + " · about ");
+    const ref = document.createElement("a"); ref.className = "ref"; ref.textContent = q.listingTitle;
+    ref.href = "property.html?id=" + encodeURIComponent(q.listingId); ref.target = "_blank"; ref.rel = "noopener";
+    meta.append(ref, " · " + new Date(q.createdAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }));
+
+    who.append(name, meta);
+    if (q.message) { const m = document.createElement("div"); m.className = "msg"; m.textContent = q.message; who.appendChild(m); }
+
+    const acts = document.createElement("div"); acts.className = "acts"; acts.style.flexWrap = "wrap";
+    const wa = document.createElement("a"); wa.className = "sm"; wa.textContent = "WhatsApp"; wa.target = "_blank"; wa.rel = "noopener";
+    wa.href = `https://wa.me/${waNumber(q.phone)}?text=` + encodeURIComponent(`Hello ${q.name}, thanks for your inquiry about ${q.listingTitle}.`);
+    const call = document.createElement("a"); call.className = "sm"; call.textContent = "Call";
+    call.href = "tel:" + String(q.phone).replace(/[^\d+]/g, "");
+
+    const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "sm";
+    toggle.textContent = q.status === "new" ? "Mark contacted" : "Mark as new";
+    toggle.onclick = async () => {
+      toggle.disabled = true;
+      try { await updateDoc(doc(db, "inquiries", q.docId), { status: q.status === "new" ? "contacted" : "new" }); await loadInquiries(); }
+      catch (err) { console.error(err); toggle.disabled = false; alert("Couldn't update this inquiry."); }
+    };
+    const del = document.createElement("button"); del.type = "button"; del.className = "sm"; del.textContent = "Delete";
+    del.onclick = async () => {
+      if (!confirm(`Delete the inquiry from ${q.name}? This can't be undone.`)) return;
+      del.disabled = true;
+      try { await deleteDoc(doc(db, "inquiries", q.docId)); await loadInquiries(); }
+      catch (err) { console.error(err); del.disabled = false; alert("Couldn't delete this inquiry."); }
+    };
+
+    acts.append(wa, call, toggle, del);
+    row.append(who, acts);
+    return row;
+  }
+
+  async function loadInquiries(){
+    const box = $("inqs");
+    box.textContent = "Loading...";
+    try {
+      const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc"), limit(100)));
+      const items = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      const fresh = items.filter(i => i.status === "new").length;
+      $("inq-h").textContent = fresh ? `Inquiries (${fresh} new)` : "Inquiries";
+      box.textContent = "";
+      if (!items.length) {
+        const p = document.createElement("p"); p.className = "empty";
+        p.textContent = "No inquiries yet. When a visitor sends one from a property page, it will appear here.";
+        box.appendChild(p);
+      } else items.forEach(q => box.appendChild(inquiryRow(q)));
+    } catch (err) {
+      console.error(err);
+      box.textContent = "Couldn't load inquiries. Refresh the page.";
     }
   }
 
